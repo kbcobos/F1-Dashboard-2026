@@ -1,5 +1,6 @@
 export const translations = {
   es: {
+    nav_live: 'En vivo',
     nav_drivers: 'Pilotos',
     nav_constructors: 'Constructores',
     nav_calendar: 'Calendario',
@@ -72,6 +73,7 @@ export const translations = {
     help_disclaimer_title: 'Aviso Legal',
   },
   en: {
+    nav_live: 'Live',
     nav_drivers: 'Drivers',
     nav_constructors: 'Constructors',
     nav_calendar: 'Calendar',

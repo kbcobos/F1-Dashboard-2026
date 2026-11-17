@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useLatestSession, useLivePositions, useLiveWeather, useLiveRaceControl, isSessionLive } from '../hooks/useLiveData'
 import { useRaceCalendar } from '../hooks/useF1Data'
 import { getTeamColor } from '../utils/constants'
-import { t } from '../utils/i18n'
 
 const TIRE_STYLES = {
   SOFT:         { color: '#E8002D', abbr: 'S' },
@@ -44,6 +43,7 @@ function DRSBadge({ value }) {
 }
 
 function getFlagStyle(flag) {
+  
   const map = {
     'GREEN':      { bg: '#00aa4422', border: '#00aa44', color: '#00dd55', icon: '🟢' },
     'YELLOW':     { bg: '#ffaa0022', border: '#ffaa00', color: '#ffcc44', icon: '🟡' },
@@ -54,6 +54,30 @@ function getFlagStyle(flag) {
     'CHEQUERED':  { bg: '#ffffff22', border: '#ffffff', color: '#ffffff', icon: '🏁' },
   }
   return map[flag?.toUpperCase()] || { bg: '#2A2A3522', border: '#3A3A45', color: '#888', icon: 'ℹ️' }
+}
+
+const SESSION_NAMES_ES = {
+  'Practice 1': 'Práctica 1',
+  'Practice 2': 'Práctica 2',
+  'Practice 3': 'Práctica 3',
+  'Qualifying': 'Clasificación',
+  'Sprint Qualifying': 'Clasificación Sprint',
+  'Sprint Shootout': 'Clasificación Sprint',
+  'Sprint': 'Sprint',
+  'Race': 'Carrera',
+}
+
+function sessionLabel(session, lang) {
+  if (!session) return ''
+  const name = lang === 'es'
+    ? SESSION_NAMES_ES[session.session_name] ?? session.session_name
+    : session.session_name
+  const place = session.location ?? session.country_name ?? session.circuit_short_name
+  return place ? `${name} · ${place}` : name
+}
+
+function raceStart(race) {
+  return new Date(race.time ? `${race.date}T${race.time}` : `${race.date}T00:00:00Z`)
 }
 
 function useCountdown(targetDate) {
@@ -75,8 +99,8 @@ function useCountdown(targetDate) {
     }
 
     update()
-    const t = setInterval(update, 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(update, 1000)
+    return () => clearInterval(timer)
   }, [targetDate])
 
   return diff
@@ -85,16 +109,16 @@ function useCountdown(targetDate) {
 function NextRaceCard({ lang }) {
   const { data: races } = useRaceCalendar('2026')
   const today = new Date()
-  const next = races?.find(r => new Date(r.date) > today)
-  const countdown = useCountdown(next?.date)
-
+  const next = races?.find(r => raceStart(r) > today)
+  const countdown = useCountdown(next ? raceStart(next).getTime() : null)
+  
   if (!next) return null
-
-  const raceDate = new Date(next.date)
-  const dateStr = raceDate.toLocaleDateString(lang === 'es' ? 'es-AR' : 'en-US', {
+  
+  const rawDate = raceStart(next).toLocaleDateString(lang === 'es' ? 'es-AR' : 'en-US', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
-
+  const dateStr = rawDate.charAt(0).toUpperCase() + rawDate.slice(1)
+  
   const units = [
     { value: countdown?.d ?? 0, label: lang === 'es' ? 'Días' : 'Days' },
     { value: countdown?.h ?? 0, label: lang === 'es' ? 'Horas' : 'Hours' },
@@ -121,7 +145,7 @@ function NextRaceCard({ lang }) {
       <div className="font-body text-sm mb-10" style={{ color: '#999' }}>
         {next.Circuit?.circuitName} · {next.Circuit?.Location?.country}
       </div>
-      <div className="font-barlow text-sm mb-10 capitalize" style={{ color: '#999' }}>
+      <div className="font-barlow text-sm mb-10" style={{ color: '#999' }}>
         {dateStr}
       </div>
 
@@ -158,8 +182,7 @@ function NextRaceCard({ lang }) {
       <div className="mt-8">
         <span className="font-barlow font-bold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider"
           style={{ background: '#E1060015', color: '#ff4444', border: '1px solid #ff444460' }}>
-          {lang === 'es' ? `Ronda ${next.round} de 22` : `Round ${next.round} of 22`}
-        </span>
+            {lang === 'es' ? `Ronda ${next.round} de ${races.length}` : `Round ${next.round} of ${races.length}`}        </span>
       </div>
     </div>
   )
@@ -207,7 +230,7 @@ export default function LiveDashboard({ lang }) {
               {session && (
                 <p className="font-body text-xs mt-2" style={{ color: '#999' }}>
                   {lang === 'es' ? 'Última sesión:' : 'Last session:'}{' '}
-                  <span style={{ color: '#888' }}>{session.session_name} — {session.meeting_name}</span>
+                  <span style={{ color: '#888' }}>{sessionLabel(session, lang)}</span>
                 </p>
               )}
             </div>
@@ -249,7 +272,7 @@ function SectionHeader({ lang, session, live, lastUpdate }) {
           </div>
           <p className="text-xs text-gray-400 font-body mt-0.5">
             {session
-              ? `${session.session_name} · ${session.meeting_name}`
+              ? sessionLabel(session, lang)
               : lang === 'es' ? 'Sin sesión activa' : 'No active session'}
           </p>
         </div>
